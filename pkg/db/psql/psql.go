@@ -2,70 +2,68 @@ package psql
 
 import (
 	"context"
-	"fmt"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/gofrs/uuid"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"java_code/pkg/db"
 	"time"
 )
 
 type PSQL struct {
 	timeout time.Duration
 	url     string
-	pool    *pgxpool.Pool
+	db      *gorm.DB
 }
 
 func New(url string, timeout time.Duration) PSQL {
 	return PSQL{
 		timeout: timeout,
 		url:     url,
-		pool:    nil,
+		db:      nil,
 	}
 }
 
-func (p *PSQL) Start(ctx context.Context) error {
-	ctxTimeout, cancel := context.WithTimeout(ctx, p.timeout)
-	defer cancel()
-
+func (p *PSQL) Start() error {
 	var err error
 
-	p.pool, err = pgxpool.Connect(ctxTimeout, p.url)
-	return err
-}
-
-func (p *PSQL) Stop() {
-	if p.pool != nil {
-		p.pool.Close()
+	if p.db, err = gorm.Open(postgres.Open(p.url), &gorm.Config{}); err != nil {
+		return err
 	}
-}
 
-func (p *PSQL) RowsFunc(ctx context.Context) error {
-	ctxTimeout, cancel := context.WithTimeout(ctx, p.timeout)
-	defer cancel()
-
-	rows, err := p.pool.Query(ctxTimeout, "select * from test_table")
+	q, err := p.db.DB()
 	if err != nil {
 		return err
 	}
 
-	for rows.Next() {
-		var x int
+	q.SetMaxIdleConns(1000)
+	q.SetMaxOpenConns(1000)
 
-		if err = rows.Scan(&x); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (p *PSQL) ExecFunc(ctx context.Context) error {
-	ctxTimeout, cancel := context.WithTimeout(ctx, p.timeout)
-	defer cancel()
-
-	_, err := p.pool.Exec(ctxTimeout, "insert into test_table(id) values ($1)", 51)
-
+	err = p.db.AutoMigrate(&db.Wallets{})
 	return err
 }
 
-func (p *PSQL) Test(ctx context.Context) {
-	fmt.Println(" PSQL TEST FUNCTION")
+func (p *PSQL) Stop() {
+	if p.db != nil {
+		dbInstance, _ := p.db.DB()
+		_ = dbInstance.Close()
+	}
+}
+
+func (p *PSQL) Update(ctx context.Context, wal db.Wallets) error {
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
+
+	return p.db.WithContext(ctxWithTimeout).Save(wal).Error
+
+}
+
+func (p *PSQL) Balance(ctx context.Context, id uuid.UUID) (float64, error) {
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
+
+	data := db.Wallets{}
+
+	err := p.db.WithContext(ctxWithTimeout).Select("balance").Where("id = ?", id).Find(&data).Error
+
+	return data.Balance, err
 }

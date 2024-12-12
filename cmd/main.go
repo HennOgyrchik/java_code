@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"java_code/pkg/config"
 	"java_code/pkg/db/psql"
 	"java_code/pkg/service"
-	"java_code/pkg/web/gin"
+	"java_code/pkg/web/ginSrvr"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -27,6 +28,7 @@ func main() {
 	cfg := config.New()
 
 	dbUrl, err := cfg.Postgres.ConnectionURL()
+	fmt.Println(dbUrl)
 	if err != nil {
 		slog.Error("read db url", err.Error())
 		return
@@ -34,15 +36,15 @@ func main() {
 
 	db := psql.New(dbUrl, time.Duration(cfg.Postgres.ConnTimeout)*time.Second)
 
-	if err := db.Start(ctx); err != nil {
+	if err := db.Start(); err != nil {
 		slog.Error("connection db", err.Error())
 		return
 	}
 	defer db.Stop()
 
-	app := service.New(&db)
+	app := service.New(ctx, &db)
 
-	webSrv := gin.New(cfg.Web.ConnectionURL(), &app)
+	webSrv := ginSrvr.New(cfg.Web.ConnectionURL(), &app)
 
 	go func() {
 		<-ctx.Done()

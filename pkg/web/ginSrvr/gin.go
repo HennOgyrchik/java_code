@@ -1,4 +1,4 @@
-package gin
+package ginSrvr
 
 import (
 	"context"
@@ -17,8 +17,8 @@ func New(url string, handler Handler) Gin {
 	router := gin.Default()
 	gin.SetMode(gin.ReleaseMode)
 
-	// TODO add endpoints
-	router.GET("/test/:id", handler.Test)
+	router.POST("/api/v1/wallet", handler.Wallet)
+	router.GET("/api/v1/wallets/:uuid", handler.Wallets)
 
 	return Gin{srv: &http.Server{Addr: url, Handler: router.Handler()}}
 }
