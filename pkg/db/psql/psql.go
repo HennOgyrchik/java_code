@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"java_code/pkg/db"
 	"time"
@@ -49,7 +50,11 @@ func (p *PSQL) Update(ctx context.Context, wal db.Wallets) error {
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 
-	_, err := p.pool.Exec(ctxWithTimeout, "update wallets set balance = balance + $1 where id = $2", wal.Balance, wal.Id)
+	x, err := p.pool.Exec(ctxWithTimeout, "update wallets set balance = balance + $1 where id = $2", wal.Balance, wal.Id)
+
+	if x.RowsAffected() < 1 {
+		err = pgx.ErrNoRows
+	}
 
 	return err
 

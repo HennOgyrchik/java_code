@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"java_code/pkg/config"
 	"java_code/pkg/db/psql"
 	"java_code/pkg/service"
@@ -21,23 +20,23 @@ func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, nil)))
 
 	if err := config.LoadConfig("./app/config/config.env"); err != nil {
-		slog.Error("read configuration", err.Error())
+		slog.Error("read configuration", "error", err.Error())
 		return
 	}
 
 	cfg := config.New()
 
 	dbUrl, err := cfg.Postgres.ConnectionURL()
-	fmt.Println(dbUrl)
+
 	if err != nil {
-		slog.Error("read db url", err.Error())
+		slog.Error("read db url", "error", err.Error())
 		return
 	}
 
 	db := psql.New(dbUrl, time.Duration(cfg.Postgres.ConnTimeout)*time.Second)
 
 	if err := db.Start(ctx); err != nil {
-		slog.Error("connection db", err.Error())
+		slog.Error("connection db", "error", err.Error())
 		return
 	}
 	defer db.Stop()
@@ -49,7 +48,7 @@ func main() {
 	go func() {
 		<-ctx.Done()
 		if err = webSrv.Stop(); err != nil {
-			slog.Error("closing web server", err.Error())
+			slog.Error("closing web server", "error", err.Error())
 			return
 		}
 		slog.Info("web server is closed")
@@ -57,7 +56,7 @@ func main() {
 
 	err = webSrv.Start()
 	if err != nil {
-		slog.Error("web server", err.Error())
+		slog.Error("web server", "error", err.Error())
 		return
 	}
 }

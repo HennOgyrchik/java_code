@@ -16,7 +16,6 @@ type Config struct {
 type PostgresConfig struct {
 	Host        string
 	Port        int
-	Scheme      string
 	DBName      string
 	User        string
 	Password    string
@@ -38,7 +37,7 @@ func (p PostgresConfig) ConnectionURL() (string, error) {
 	host = host + ":" + strconv.Itoa(p.Port)
 
 	u := &url.URL{
-		Scheme: p.Scheme,
+		Scheme: "postgres",
 		Host:   host,
 		Path:   p.DBName,
 	}
@@ -78,7 +77,6 @@ func New() Config {
 		Host:        getEnvAsString("PSQL_HOST", "localhost"),
 		Port:        getEnvAsInt("PSQL_PORT", 5432),
 		DBName:      getEnvAsString("PSQL_DB_NAME", "postgres"),
-		Scheme:      getEnvAsString("PSQL_SCHEME", "postgres"),
 		User:        getEnvAsString("PSQL_USER", "postgres"),
 		Password:    getEnvAsString("PSQL_PASSWORD", "postgres"),
 		SSLMode:     getEnvAsString("PSQL_SSL_MODE", "disable"),
