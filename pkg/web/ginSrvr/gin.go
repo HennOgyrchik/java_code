@@ -19,6 +19,7 @@ func New(url string, handler Handler) Gin {
 
 	router.POST("/api/v1/wallet", handler.Wallet)
 	router.GET("/api/v1/wallets/:uuid", handler.Wallets)
+	router.PUT("/api/v1/wallet/:uuid", handler.NewWallet)
 
 	return Gin{srv: &http.Server{Addr: url, Handler: router.Handler()}}
 }

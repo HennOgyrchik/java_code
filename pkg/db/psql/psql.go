@@ -2,9 +2,9 @@ package psql
 
 import (
 	"context"
+	"fmt"
 	"github.com/gofrs/uuid"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"java_code/pkg/db"
 	"time"
 )
@@ -12,40 +12,36 @@ import (
 type PSQL struct {
 	timeout time.Duration
 	url     string
-	db      *gorm.DB
+	pool    *pgxpool.Pool
 }
 
 func New(url string, timeout time.Duration) PSQL {
 	return PSQL{
 		timeout: timeout,
 		url:     url,
-		db:      nil,
+		pool:    nil,
 	}
 }
 
-func (p *PSQL) Start() error {
-	var err error
+func (p *PSQL) Start(ctx context.Context) error {
+	ctxTimeout, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
 
-	if p.db, err = gorm.Open(postgres.Open(p.url), &gorm.Config{}); err != nil {
-		return err
-	}
-
-	q, err := p.db.DB()
+	pool, err := pgxpool.Connect(ctxTimeout, p.url)
 	if err != nil {
-		return err
+		return fmt.Errorf("Create PSQL connect: %w", err)
 	}
 
-	q.SetMaxIdleConns(1000)
-	q.SetMaxOpenConns(1000)
+	p.pool = pool
 
-	err = p.db.AutoMigrate(&db.Wallets{})
+	_, err = p.pool.Exec(ctx, "create table if not exists  wallets (id uuid unique, balance float)")
+
 	return err
 }
 
 func (p *PSQL) Stop() {
-	if p.db != nil {
-		dbInstance, _ := p.db.DB()
-		_ = dbInstance.Close()
+	if p.pool != nil {
+		p.pool.Close()
 	}
 }
 
@@ -53,17 +49,29 @@ func (p *PSQL) Update(ctx context.Context, wal db.Wallets) error {
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 
-	return p.db.WithContext(ctxWithTimeout).Save(wal).Error
+	_, err := p.pool.Exec(ctxWithTimeout, "update wallets set balance = balance + $1 where id = $2", wal.Balance, wal.Id)
+
+	return err
 
 }
 
-func (p *PSQL) Balance(ctx context.Context, id uuid.UUID) (float64, error) {
+func (p *PSQL) GetBalance(ctx context.Context, id uuid.UUID) (float64, error) {
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 
-	data := db.Wallets{}
+	row := p.pool.QueryRow(ctxWithTimeout, "select balance from wallets where id = $1", id)
 
-	err := p.db.WithContext(ctxWithTimeout).Select("balance").Where("id = ?", id).Find(&data).Error
+	var balance float64
+	err := row.Scan(&balance)
 
-	return data.Balance, err
+	return balance, err
+}
+
+func (p *PSQL) Create(ctx context.Context, id uuid.UUID) error {
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
+
+	_, err := p.pool.Exec(ctxWithTimeout, "insert into wallets(id,balance) values ($1,$2)", id, 0.0)
+
+	return err
 }

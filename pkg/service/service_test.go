@@ -16,11 +16,18 @@ import (
 	"time"
 )
 
+const url = "postgres://postgres:123@192.168.31.197:5432/postgres?connect_timeout=5&sslmode=disable"
+
 func TestService_Wallet(t *testing.T) {
 	ctx := context.Background()
 
-	testDB := psql.New("postgres://postgres:123@192.168.31.197:5432/postgres?connect_timeout=5&sslmode=disable", 50*time.Second)
-	testDB.Start()
+	testDB := psql.New(url, 50*time.Second)
+	err := testDB.Start(ctx)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	app := New(ctx, &testDB)
 
 	r := gin.Default()
@@ -50,6 +57,7 @@ func TestService_Wallet(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		req, _ := http.NewRequest(http.MethodPost, "/api/v1/wallet", bytes.NewBuffer(jsonData))
+
 		req.Header.Set("Content-Type", "application/json")
 
 		r.ServeHTTP(w, req)
@@ -62,8 +70,8 @@ func TestService_Wallet(t *testing.T) {
 func TestService_Wallets(t *testing.T) {
 	ctx := context.Background()
 
-	testDB := psql.New("postgres://postgres:123@192.168.31.197:5432/postgres?connect_timeout=5&sslmode=disable", 50*time.Second)
-	testDB.Start()
+	testDB := psql.New(url, 50*time.Second)
+	testDB.Start(ctx)
 	app := New(ctx, &testDB)
 
 	r := gin.Default()
@@ -90,8 +98,8 @@ func TestService_Wallets(t *testing.T) {
 func TestStress(t *testing.T) {
 	ctx := context.Background()
 
-	testDB := psql.New("postgres://postgres:123@127.0.0.1:5432/postgres?connect_timeout=50&sslmode=disable", 5*time.Second)
-	testDB.Start()
+	testDB := psql.New(url, 5*time.Second)
+	testDB.Start(ctx)
 
 	defer testDB.Stop()
 
@@ -110,7 +118,7 @@ func TestStress(t *testing.T) {
 
 	jsonData, _ := json.Marshal(data{WalletId: id, OperationType: "deposit", Amount: 1})
 
-	n := 1
+	n := 10
 
 	var wg sync.WaitGroup
 	wg.Add(n)

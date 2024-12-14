@@ -6,11 +6,12 @@ import (
 )
 
 type DB interface {
-	Start() error
+	Start(ctx context.Context) error
 	Stop()
 
 	Update(context.Context, Wallets) error
-	Balance(context.Context, uuid.UUID) (float64, error)
+	GetBalance(context.Context, uuid.UUID) (float64, error)
+	Create(context.Context, uuid.UUID) error
 }
 
 type Wallets struct {

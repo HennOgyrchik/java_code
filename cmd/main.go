@@ -20,7 +20,7 @@ func main() {
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, nil)))
 
-	if err := config.LoadConfig("config.env"); err != nil {
+	if err := config.LoadConfig("./app/config/config.env"); err != nil {
 		slog.Error("read configuration", err.Error())
 		return
 	}
@@ -36,7 +36,7 @@ func main() {
 
 	db := psql.New(dbUrl, time.Duration(cfg.Postgres.ConnTimeout)*time.Second)
 
-	if err := db.Start(); err != nil {
+	if err := db.Start(ctx); err != nil {
 		slog.Error("connection db", err.Error())
 		return
 	}
@@ -58,5 +58,6 @@ func main() {
 	err = webSrv.Start()
 	if err != nil {
 		slog.Error("web server", err.Error())
+		return
 	}
 }

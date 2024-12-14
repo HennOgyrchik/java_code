@@ -1,0 +1,25 @@
+version: "3"
+services:
+  postgres:
+    image: "postgres:16"
+    command: -c 'max_connections=300'
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "${DB_NAME}", "-U", "postgres" ]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    environment:
+      POSTGRES_PASSWORD: "123"
+    volumes:
+      - /data/db:/var/lib/postgresql/data
+  go_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+     - ./config:/app/config
+    ports:
+      - "8080:80"
+    depends_on:
+      postgres:
+        condition: service_healthy

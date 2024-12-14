@@ -3,6 +3,7 @@ package ginSrvr
 import "github.com/gin-gonic/gin"
 
 type Handler interface {
-	Wallet(ctx *gin.Context)
-	Wallets(ctx *gin.Context)
+	Wallet(*gin.Context)
+	Wallets(*gin.Context)
+	NewWallet(*gin.Context)
 }

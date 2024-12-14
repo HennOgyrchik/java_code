@@ -82,7 +82,7 @@ func New() Config {
 		User:        getEnvAsString("PSQL_USER", "postgres"),
 		Password:    getEnvAsString("PSQL_PASSWORD", "postgres"),
 		SSLMode:     getEnvAsString("PSQL_SSL_MODE", "disable"),
-		ConnTimeout: getEnvAsInt("PSQL_CONN_TIMEOUT", 5),
+		ConnTimeout: getEnvAsInt("PSQL_CONN_TIMEOUT", 60),
 	},
 		Web: WebConfig{
 			Host: getEnvAsString("WEB_HOST", "localhost"),
